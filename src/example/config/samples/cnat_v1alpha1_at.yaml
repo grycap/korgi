@@ -1,0 +1,6 @@
+apiVersion: cnat.esparig.github.io/v1alpha1
+kind: At
+metadata:
+  name: at-sample
+spec:
+  # TODO(user): Add fields here
