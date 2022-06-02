@@ -128,7 +128,7 @@ For more details on kubebuilder markers read: https://book.kubebuilder.io/refere
 Working on the `func (r *AtReconciler) Reconcile` function, change the logger to a specific logger name and with some defined structure as follows:
 
 ```go
-	logger := r.Log.WithValues("namespace", req.NamespacedName, "at", req.Name)
+	logger := log.FromContext(ctx).WithValues("namespace", req.NamespacedName, "at", req.Name)
 	logger.Info("== Reconciling At")
 ```
 
