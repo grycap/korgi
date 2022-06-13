@@ -1,0 +1,12 @@
+apiVersion: cnat.esparig.github.io/v1alpha1
+kind: At
+metadata:
+  name: at-sample-mnist
+spec:
+  schedule: "2022-06-13T09:54:00+00:00"
+  containers:
+  - name: tf-gpu-models
+    image: esparig/testing-tf-models:latest
+    command: ["/bin/bash","-c","cd /usr/local/lib/python3.6/dist-packages/official && python3 vision/image_classification/mnist_main.py --model_dir=$MODEL_DIR --data_dir=$DATA_DIR --train_epochs=20 --download"]
+  command: 'echo "Executing mnist claffification at `date`"'
+  
