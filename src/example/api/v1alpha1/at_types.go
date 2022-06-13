@@ -29,8 +29,9 @@ type AtSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Specifications for "at" scheduling
-	Schedule string `json:"schedule,omitempty"`
-	Command  string `json:"command,omitempty"`
+	Schedule   string `json:"schedule,omitempty"`
+	Command    string `json:"command,omitempty"`
+	Containers string `json:"containers,omitempty"`
 }
 
 // AtStatus defines the observed state of At
