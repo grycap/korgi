@@ -3,4 +3,14 @@ layout:
 - go.kubebuilder.io/v3
 projectName: korgi-operator
 repo: korgil.grycap.upv.es/korgi-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: korgi.grycap.upv.es
+  group: batch
+  kind: KorgiJob
+  path: korgil.grycap.upv.es/korgi-operator/api/v1
+  version: v1
 version: "3"
