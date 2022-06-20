@@ -3,5 +3,5 @@ kind: At
 metadata:
   name: at-sample-three
 spec:
-  schedule: "2022-03-31T14:31:00Z"
+  schedule: "2022-03-31T13:28:00Z"
   command: 'echo "Happiness is when what you think, what you say, and what you do are in harmony."'
