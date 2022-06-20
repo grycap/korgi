@@ -1,0 +1,6 @@
+domain: korgi.grycap.upv.es
+layout:
+- go.kubebuilder.io/v3
+projectName: korgi-operator
+repo: korgil.grycap.upv.es/korgi-operator
+version: "3"
