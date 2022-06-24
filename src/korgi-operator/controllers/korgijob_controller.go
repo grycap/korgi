@@ -19,12 +19,16 @@ package controllers
 import (
 	"context"
 
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	batchv1 "korgil.grycap.upv.es/korgi-operator/api/v1"
+	korgiv1 "korgi.grycap.upv.es/korgi-operator/api/v1"
 )
 
 // KorgiJobReconciler reconciles a KorgiJob object
@@ -33,9 +37,9 @@ type KorgiJobReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=batch.korgi.grycap.upv.es,resources=korgijobs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=batch.korgi.grycap.upv.es,resources=korgijobs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=batch.korgi.grycap.upv.es,resources=korgijobs/finalizers,verbs=update
+//+kubebuilder:rbac:groups=korgi.korgi.grycap.upv.es,resources=korgijobs,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=korgi.korgi.grycap.upv.es,resources=korgijobs/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=korgi.korgi.grycap.upv.es,resources=korgijobs/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -47,9 +51,70 @@ type KorgiJobReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.0/pkg/reconcile
 func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx)
+	log.Info("Accepting KorgiJob")
+	korgiJob := &korgiv1.KorgiJob{}
+	if err := r.Client.Get(ctx, req.NamespacedName, korgiJob); err != nil {
+		log.Error(err, "Unable to fetch KorgiJob")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 
-	// TODO(user): your logic here
+	switch korgiJob.GetStatus() {
+	case "":
+		log.Info("Changing status to pending")
+		korgiJob.Status.Status = korgiv1.KorgiJobPending
+		if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+			log.Error(err, "Status update failed")
+			return ctrl.Result{}, err
+		}
+	case korgiv1.KorgiJobPending:
+		log.Info(("Creating job from KorgiJob"))
+		job := batchv1.Job{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      korgiJob.Name + "-subjob",
+				Namespace: korgiJob.Namespace,
+				Labels:    korgiJob.Labels,
+			},
+
+			Spec: batchv1.JobSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							corev1.Container{
+								Name:    korgiJob.Name + "-container",
+								Image:   korgiJob.Spec.Image,
+								Command: korgiJob.Spec.Command,
+								Resources: corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										"nvidia.com/gpu": resource.MustParse("1"),
+									},
+								},
+							},
+						},
+						RestartPolicy: "Never",
+					},
+				},
+			},
+		}
+		log.Info("Job created", "job", job.Name)
+		if _, err := ctrl.CreateOrUpdate(ctx, r.Client, &job, func() error {
+			if err := ctrl.SetControllerReference(korgiJob, &job, r.Scheme); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			return ctrl.Result{}, err
+		}
+		korgiJob.Status.Status = korgiv1.KorgiJobRunning
+		if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+			log.Error(err, "Status update failed")
+			return ctrl.Result{}, err
+		}
+	case korgiv1.KorgiJobRunning:
+		log.Info("Checking subjob status")
+	case korgiv1.KorgiJobCompleted:
+		log.Info("KorgiJob completed")
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -57,6 +122,6 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 // SetupWithManager sets up the controller with the Manager.
 func (r *KorgiJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&batchv1.KorgiJob{}).
+		For(&korgiv1.KorgiJob{}).
 		Complete(r)
 }

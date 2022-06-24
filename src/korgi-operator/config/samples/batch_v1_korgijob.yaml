@@ -1,6 +1,0 @@
-apiVersion: batch.korgi.grycap.upv.es/v1
-kind: KorgiJob
-metadata:
-  name: korgijob-sample
-spec:
-  # TODO(user): Add fields here

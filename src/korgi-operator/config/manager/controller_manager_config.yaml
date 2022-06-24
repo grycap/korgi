@@ -8,4 +8,4 @@ webhook:
   port: 9443
 leaderElection:
   leaderElect: true
-  resourceName: 9cb80872.korgi.grycap.upv.es
+  resourceName: b34330b8.korgi.grycap.upv.es

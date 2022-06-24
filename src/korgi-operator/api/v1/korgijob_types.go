@@ -20,6 +20,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// KorgiJob status options
+	KorgiJobPending = "PENDING"
+	KorgiJobRunning = "RUNNING"
+	//KorgiJobRescheduling = "RESCHEDULING"
+	KorgiJobCompleted = "COMPLETED"
+	KorgiJobFailed    = "FAILED"
+)
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -28,18 +37,23 @@ type KorgiJobSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of KorgiJob. Edit korgijob_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Image   string   `json:"image"`
+	Command []string `json:"command"`
 }
 
 // KorgiJobStatus defines the observed state of KorgiJob
 type KorgiJobStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	//Status describes the status of the KorgiJob:
+	//PENDING, RUNNING, RESCHEDULING, COMPLETED, FAILED
+	Status string `json:"status"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:JSONPath=".status.status",name="Status",type="string"
 
 // KorgiJob is the Schema for the korgijobs API
 type KorgiJob struct {
@@ -61,4 +75,8 @@ type KorgiJobList struct {
 
 func init() {
 	SchemeBuilder.Register(&KorgiJob{}, &KorgiJobList{})
+}
+
+func (kj KorgiJob) GetStatus() string {
+	return kj.Status.Status
 }
