@@ -52,7 +52,6 @@ type KorgiJobReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.0/pkg/reconcile
 func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-	log.Info("Accepting KorgiJob")
 	korgiJob := &korgiv1.KorgiJob{}
 	if err := r.Client.Get(ctx, req.NamespacedName, korgiJob); err != nil {
 		log.Error(err, "Unable to fetch KorgiJob")
@@ -61,13 +60,6 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	switch korgiJob.GetStatus() {
 	case "":
-		log.Info("Changing status to pending")
-		korgiJob.Status.Status = korgiv1.KorgiJobPending
-		if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
-			log.Error(err, "Status update failed")
-			return ctrl.Result{}, err
-		}
-	case korgiv1.KorgiJobPending:
 		log.Info(("Creating job from KorgiJob"))
 		job := batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
@@ -110,6 +102,19 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			log.Error(err, "Status update failed")
 			return ctrl.Result{}, err
 		}
+		log.Info("Changing status to pending")
+		korgiJob.Status.Status = korgiv1.KorgiJobPending
+		if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+			log.Error(err, "Status update failed")
+			return ctrl.Result{}, err
+		}
+	case korgiv1.KorgiJobPending:
+		var childJobs batchv1.JobList
+		if err := r.List(ctx, &childJobs, client.InNamespace(req.Namespace)); err != nil {
+			log.Error(err, "Unable to list child Jobs")
+			return ctrl.Result{}, err
+		}
+		log.Info(childJobs.Items[0].String())
 	case korgiv1.KorgiJobRunning:
 		log.Info("Checking subjob status")
 	case korgiv1.KorgiJobCompleted:
@@ -123,5 +128,6 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 func (r *KorgiJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&korgiv1.KorgiJob{}).
+		Owns(&batchv1.Job{}).
 		Complete(r)
 }
