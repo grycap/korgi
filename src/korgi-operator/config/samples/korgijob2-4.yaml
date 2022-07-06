@@ -1,0 +1,9 @@
+# Simple DL Training using Tensorflow
+# Replica 4
+apiVersion: korgi.korgi.grycap.upv.es/v1
+kind: KorgiJob
+metadata:
+  name: korgijob-sample-2-4
+spec:
+  image: esparig/testing-tf-models:latest
+  command: ["/bin/bash","-c","cd /usr/local/lib/python3.6/dist-packages/official && python3 vision/image_classification/mnist_main.py --model_dir=$MODEL_DIR --data_dir=$DATA_DIR --train_epochs=20 --download"]
