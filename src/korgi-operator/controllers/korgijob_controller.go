@@ -60,7 +60,7 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	switch korgiJob.GetStatus() {
 	case "":
-		log.Info(("Creating job from KorgiJob"))
+		log.Info("Creating job from KorgiJob")
 		job := batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      korgiJob.Name + "-subjob",
@@ -88,39 +88,90 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				},
 			},
 		}
-		log.Info("Job created", "job", job.Name)
+
 		if _, err := ctrl.CreateOrUpdate(ctx, r.Client, &job, func() error {
 			if err := ctrl.SetControllerReference(korgiJob, &job, r.Scheme); err != nil {
 				return err
 			}
+			log.Info("Job created", "job", job.Name)
 			return nil
 		}); err != nil {
 			return ctrl.Result{}, err
 		}
-		korgiJob.Status.Status = korgiv1.KorgiJobRunning
-		if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
-			log.Error(err, "Status update failed")
-			return ctrl.Result{}, err
-		}
-		log.Info("Changing status to pending")
+
 		korgiJob.Status.Status = korgiv1.KorgiJobPending
 		if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
 			log.Error(err, "Status update failed")
 			return ctrl.Result{}, err
 		}
 	case korgiv1.KorgiJobPending:
+		log.Info("Korgijob Pending")
 		var childJobs batchv1.JobList
 		if err := r.List(ctx, &childJobs, client.InNamespace(req.Namespace)); err != nil {
 			log.Error(err, "Unable to list child Jobs")
 			return ctrl.Result{}, err
 		}
-		log.Info(childJobs.Items[0].String())
-	case korgiv1.KorgiJobRunning:
-		log.Info("Checking subjob status")
-	case korgiv1.KorgiJobCompleted:
-		log.Info("KorgiJob completed")
-	}
+		active := childJobs.Items[0].Status.Active
+		succeeded := childJobs.Items[0].Status.Succeeded
+		failed := childJobs.Items[0].Status.Failed
 
+		log.Info("", "Active: ", active, "Succeeded: ", succeeded, "Failed: ", failed)
+		if active > 0 {
+			korgiJob.Status.Status = korgiv1.KorgiJobRunning
+			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
+		} else if succeeded > 0 {
+			korgiJob.Status.Status = korgiv1.KorgiJobCompleted
+			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
+		} else if failed > 2 {
+			korgiJob.Status.Status = korgiv1.KorgiJobFailed
+			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
+		}
+	case korgiv1.KorgiJobRunning:
+		log.Info("Korgijob Running")
+		var childJobs batchv1.JobList
+		if err := r.List(ctx, &childJobs, client.InNamespace(req.Namespace)); err != nil {
+			log.Error(err, "Unable to list child Jobs")
+			return ctrl.Result{}, err
+		}
+		active := childJobs.Items[0].Status.Active
+		succeeded := childJobs.Items[0].Status.Succeeded
+		failed := childJobs.Items[0].Status.Failed
+
+		log.Info("", "Active: ", active, "Succeeded: ", succeeded, "Failed: ", failed)
+		if active > 0 {
+			korgiJob.Status.Status = korgiv1.KorgiJobRunning
+			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
+		} else if succeeded > 0 {
+			korgiJob.Status.Status = korgiv1.KorgiJobCompleted
+			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
+		} else if failed > 2 {
+			korgiJob.Status.Status = korgiv1.KorgiJobFailed
+			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
+		}
+	case korgiv1.KorgiJobCompleted:
+		log.Info("KorgiJob Completed")
+
+	case korgiv1.KorgiJobFailed:
+		log.Info("KorgiJob Failed, please check logs for possible errors and rerun KorgiJob.")
+	}
 	return ctrl.Result{}, nil
 }
 
