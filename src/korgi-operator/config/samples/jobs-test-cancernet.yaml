@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tf-cancernet-32-1g
+spec:
+  template:
+    metadata:
+      name: tf-cancernet-32-1g
+    spec:
+      volumes:
+        - name: data-volume
+          hostPath:
+            path: /hdd500/data
+            type: ''
+      containers:
+        - name: tf-cancernet
+          image: esparig/tf-cancernet:latest
+          command: 
+            - /bin/bash
+            - '-c'
+            - >-
+              python3
+              training.py  
+              --epochs=1  
+              --batch_size=32  
+              --lr=1e-2
+              --save=output/model.h5
+          resources:
+            limits:
+              nvidia.com/mig-1g.6gb: '1'
+          volumeMounts:
+            - name: data-volume
+              mountPath: /data
+      restartPolicy: Never

@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tf-resnet50-imagenet-128-2g-no-ckpt
+spec:
+  template:
+    metadata:
+      name: tf-resnet50-imagenet-128-2g-no-ckpt
+    spec:
+      volumes:
+        - name: data-volume
+          hostPath:
+            path: /hdd500/data
+            type: ''
+      containers:
+        - name: tf-resnet50-imagenet
+          image: esparig/tf-resnet50-imagenet:latest
+          command:
+            - /bin/bash
+            - '-c'
+            - >-
+              python3
+              /usr/local/lib/python3.6/dist-packages/official/vision/beta/train.py  
+              --experiment=resnet_imagenet  
+              --config_file=/data/imagenet/experiment/imagenet_resnet50_gpu_128_no_ckpt.yaml  
+              --mode=train_and_eval   --model_dir=/data/model_checkpoints  
+              --params_override='runtime.num_gpus=1'
+          resources:
+            limits:
+              nvidia.com/mig-2g.12gb: '1'
+          volumeMounts:
+            - name: data-volume
+              mountPath: /data
+      restartPolicy: Never
