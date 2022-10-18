@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tf-cancernet-tensorboard-test
+spec:
+  template:
+    metadata:
+      name: tf-cancernet-tensorboard-test
+    spec:
+      volumes:
+        - name: data-volume
+          hostPath:
+            path: /hdd500/data
+            type: ''
+        - name: tensorboard
+          hostPath:
+            path: /hdd500/tensorboard
+            type: ''
+      containers:
+        - name: tf-cancernet
+          image: esparig/tf-cancernet:latest
+          env:
+          - name: NAME_JOB
+            value: tf-cancernet-tensorboard-test
+          command: 
+            - /bin/bash
+            - '-c'
+            - >-
+              python3
+              training.py
+              --TB 
+              --epochs=3
+              --batch_size=64
+              --learning_rate=1e-2
+              --save=output/model.h5
+          resources:
+            limits:
+              nvidia.com/mig-1g.6gb: '1'
+          volumeMounts:
+            - name: data-volume
+              mountPath: /data
+            - name: tensorboard
+              mountPath: /tensorboard
+      restartPolicy: Never
