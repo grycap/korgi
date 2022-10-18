@@ -1,11 +1,11 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tf-cancernet-32-1g
+  name: tf-cancernet-1024-2g
 spec:
   template:
     metadata:
-      name: tf-cancernet-32-1g
+      name: tf-cancernet-1024-2g
     spec:
       volumes:
         - name: data-volume
@@ -20,14 +20,14 @@ spec:
             - '-c'
             - >-
               python3
-              training.py  
-              --epochs=1  
-              --batch_size=32  
-              --lr=1e-2
+              training.py
+              --epochs=100
+              --batch_size=1024
+              --learning_rate=1e-2
               --save=output/model.h5
           resources:
             limits:
-              nvidia.com/mig-1g.6gb: '1'
+              nvidia.com/mig-2g.12gb: '1'
           volumeMounts:
             - name: data-volume
               mountPath: /data
