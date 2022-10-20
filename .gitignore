@@ -1,5 +1,5 @@
 /dev_prep*
 /resources/a30driver*
 /resources/infrastructure*
-/.vscode*
+/.vscode/*
 /src/.vscode/*
