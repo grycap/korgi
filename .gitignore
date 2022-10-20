@@ -2,3 +2,4 @@
 /resources/a30driver*
 /resources/infrastructure*
 /.vscode*
+/src/.vscode/*
