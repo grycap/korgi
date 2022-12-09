@@ -1,0 +1,21 @@
+name: Docker Image CI TF and Model Garden
+  push:
+    paths:
+    - 'dockerfiles/tf-models/**'
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@master
+    - name: Publish to Registry
+      uses: elgohr/Publish-Docker-Github-Action@master
+      with:
+        name: esparig/tf-models
+        username: ${{ secrets.DOCKER_USER }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        dockerfile: dockerfiles/tf-models/Dockerfile
+        context: dockerfiles/tf-models/
