@@ -1,4 +1,5 @@
 name: Docker Image CI TF and Model Garden
+on:
   push:
     paths:
     - 'dockerfiles/tf-models/**'
