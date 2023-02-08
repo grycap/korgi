@@ -39,7 +39,7 @@ type KorgiJobSchedulerSpec struct {
 	// Foo string `json:"foo,omitempty"`
 
 	KorgiJobName string `json:"korgijobname"`
-	GPURecources string `json:"gpu"`
+	GPUResources string `json:"gpu"`
 }
 
 // KorgiJobSchedulerStatus defines the observed state of KorgiJobScheduler

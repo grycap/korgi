@@ -52,11 +52,14 @@ spec:
           status:
             description: KorgiJobStatus defines the observed state of KorgiJob
             properties:
+              gpuinfo:
+                type: string
               status:
                 description: 'Status describes the status of the KorgiJob: PENDING,
                   RUNNING, RESCHEDULING, COMPLETED, FAILED'
                 type: string
             required:
+            - gpuinfo
             - status
             type: object
         type: object

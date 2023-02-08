@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -61,38 +60,44 @@ func (r *KorgiJobSchedulerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	case "":
 		log.Info("..... KorgiJobScheduler Controller Starts .....")
 		log.Info("KorgiJob Name = " + korgiJobScheduler.Spec.KorgiJobName)
-		log.Info("KorgiJob GPU Resources = " + korgiJobScheduler.Spec.GPURecources)
+		log.Info("KorgiJob GPU Resources = " + korgiJobScheduler.Spec.GPUResources)
 		// Check if the KorgiJob already exists
-		found := &esupvgrycapv1.KorgiJob{}
-		err := r.Get(context.TODO(), types.NamespacedName{Name: korgiJobScheduler.Spec.KorgiJobName, Namespace: req.Namespace}, found)
+		foundKJ := &esupvgrycapv1.KorgiJob{}
+		err := r.Get(context.TODO(), types.NamespacedName{Name: korgiJobScheduler.Spec.KorgiJobName, Namespace: req.Namespace}, foundKJ)
 		if err != nil && errors.IsNotFound(err) {
 			log.Info("KorgiJob " + korgiJobScheduler.Spec.KorgiJobName + " not found.")
-			// if creation time > X hours KJS.Status = FAILED
-			log.Info("korgiJobScheduler Status: " + korgiJobScheduler.GetStatus())
-			log.Info("korgiJobScheduler Creation Time: " + korgiJobScheduler.ObjectMeta.CreationTimestamp.String())
-			log.Info("Time now: " + time.Now().String())
-			//hour := 3600000
-			var hour int64 = 5000
-			lifetime := time.Now().UnixMilli() - korgiJobScheduler.ObjectMeta.CreationTimestamp.Time.UnixMilli()
-			if lifetime > hour {
-				// if creation time > X hours KJS.Status = FAILED
-				log.Info("HAN PASADO 5 SEGUNDOS!")
-				// TODO never entering here
-			} else {
-				// This is an ugly patch, problem, it generates a lot of not wanted INFO (loop until time is reached)
-				// r.Reconcile(ctx, req)
-			}
 		} else {
 			log.Info("KorgiJob " + korgiJobScheduler.Spec.KorgiJobName + " has been found.")
 			// Pass GPU information to korgijob
+			foundKJ.Status.GPUInfo = korgiJobScheduler.Spec.GPUResources
 			// Change KJS.Status to Running
+			korgiJobScheduler.Status.Status = esupvgrycapv1.KorgiJobSchedulerRunning
+			if err := r.Client.Status().Update(ctx, korgiJobScheduler); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
+			log.Info("Change korgijob status to pending...")
+			foundKJ.Status.Status = esupvgrycapv1.KorgiJobPending
+			//TODO: update status
 		}
 
 	case esupvgrycapv1.KorgiJobSchedulerRunning:
 		// Check KJ Status
-		switch "" /* KJ.Status */ {
+		log.Info("..... KorgiJobScheduler Controller -> KJS Running .....")
+		foundKJ := &esupvgrycapv1.KorgiJob{}
+		var kjStatus string
+		err := r.Get(context.TODO(), types.NamespacedName{Name: korgiJobScheduler.Spec.KorgiJobName, Namespace: req.Namespace}, foundKJ)
+		if err != nil && errors.IsNotFound(err) {
+			log.Info("KorgiJob " + korgiJobScheduler.Spec.KorgiJobName + " not found.")
+		} else {
+			log.Info("KorgiJob " + korgiJobScheduler.Spec.KorgiJobName + " has been found.")
+			kjStatus = korgiJobScheduler.Status.Status
+		}
+		switch kjStatus {
 		case "":
 			// Change korgijob status to pending
+		case esupvgrycapv1.KorgiJobPending:
+			log.Info("Enters KJ Pending")
 		case esupvgrycapv1.KorgiJobRunning:
 			// Change KJ.Status to Rescheduling
 			// Change KJS.Status to Completed

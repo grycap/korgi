@@ -52,6 +52,8 @@ type KorgiJobStatus struct {
 	//Status describes the status of the KorgiJob:
 	//PENDING, RUNNING, RESCHEDULING, COMPLETED, FAILED
 	Status string `json:"status"`
+
+	GPUInfo string `json:"gpuinfo"`
 }
 
 //+kubebuilder:object:root=true
@@ -65,8 +67,6 @@ type KorgiJob struct {
 
 	Spec   KorgiJobSpec   `json:"spec,omitempty"`
 	Status KorgiJobStatus `json:"status,omitempty"`
-
-	//GPUInfo string `json:""`
 }
 
 //+kubebuilder:object:root=true
