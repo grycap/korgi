@@ -1,0 +1,31 @@
+# permissions for end users to edit korgijobschedulers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: korgijobscheduler-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: korgi
+    app.kubernetes.io/part-of: korgi
+    app.kubernetes.io/managed-by: kustomize
+  name: korgijobscheduler-editor-role
+rules:
+- apiGroups:
+  - es.upv.grycap
+  resources:
+  - korgijobschedulers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - es.upv.grycap
+  resources:
+  - korgijobschedulers/status
+  verbs:
+  - get

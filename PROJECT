@@ -1,0 +1,23 @@
+domain: es.upv.grycap
+layout:
+- go.kubebuilder.io/v3
+projectName: korgi
+repo: es.upv.grycap/korgi
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: es.upv.grycap
+  kind: KorgiJob
+  path: es.upv.grycap/korgi/api/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: es.upv.grycap
+  kind: KorgiJobScheduler
+  path: es.upv.grycap/korgi/api/v1
+  version: v1
+version: "3"

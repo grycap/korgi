@@ -1,0 +1,7 @@
+apiVersion: es.upv.grycap/v1
+kind: KorgiJob
+metadata:
+  name: prueba01
+  namespace: test-nm
+spec:
+  # TODO(user): Add fields here

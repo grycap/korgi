@@ -1,0 +1,59 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - es.upv.grycap
+  resources:
+  - korgijobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - es.upv.grycap
+  resources:
+  - korgijobs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - es.upv.grycap
+  resources:
+  - korgijobs/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - es.upv.grycap
+  resources:
+  - korgijobschedulers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - es.upv.grycap
+  resources:
+  - korgijobschedulers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - es.upv.grycap
+  resources:
+  - korgijobschedulers/status
+  verbs:
+  - get
+  - patch
+  - update

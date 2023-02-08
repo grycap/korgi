@@ -1,0 +1,12 @@
+apiVersion: es.upv.grycap/v1
+kind: KorgiJobScheduler
+metadata:
+  labels:
+    app.kubernetes.io/name: korgijobscheduler
+    app.kubernetes.io/instance: korgijobscheduler-sample
+    app.kubernetes.io/part-of: korgi
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: korgi
+  name: korgijobscheduler-sample
+spec:
+  # TODO(user): Add fields here
