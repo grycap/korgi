@@ -1,8 +1,0 @@
-# Test what happends if docker image doesn't exist
-apiVersion: korgi.korgi.grycap.upv.es/v1
-kind: KorgiJob
-metadata:
-  name: korgijob-sample-3
-spec:
-  image: esparig/testing-not-existing-image
-  command: ["/bin/bash","-c","ls"]
