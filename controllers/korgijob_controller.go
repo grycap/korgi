@@ -18,6 +18,8 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -65,16 +67,17 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		succeeded := job.Status.Succeeded
 		failed := job.Status.Failed
 		log.Info("", "Active: ", active, "Succeeded: ", succeeded, "Failed: ", failed)
-		if active > 0 {
-			return esupvgrycapv1.KorgiJobRunning
+		for true {
+			if active > 0 {
+				return esupvgrycapv1.KorgiJobRunning
+			}
+			if job.Status.Succeeded > 0 {
+				return esupvgrycapv1.KorgiJobCompleted
+			}
+			if job.Status.Failed > 0 {
+				return esupvgrycapv1.KorgiJobFailed
+			}
 		}
-		if job.Status.Succeeded > 0 {
-			return esupvgrycapv1.KorgiJobCompleted
-		}
-		if job.Status.Failed > 0 {
-			return esupvgrycapv1.KorgiJobFailed
-		}
-		// default option:
 		return "UNDETERMINED"
 	}
 
@@ -88,9 +91,10 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// Create associated job
 		log.Info("KorgiJob.Status = PENDING")
 		log.Info("Creating job from KorgiJob")
+		jobName := fmt.Sprintf("%s-%d", korgiJob.Name+"-subjob", time.Now().Unix())
 		job := batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      korgiJob.Name + "-subjob",
+				Name:      jobName,
 				Namespace: korgiJob.Namespace,
 				Labels:    korgiJob.Labels,
 			},
@@ -128,7 +132,7 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// Update KorgiJob status
 		korgiJob.Status.Status = esupvgrycapv1.KorgiJobRunning
 		if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
-			log.Error(err, "Status update failed")
+			log.Error(err, "Status update failed (from pending to running)")
 			return ctrl.Result{}, err
 		}
 
@@ -143,19 +147,35 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			log.Error(err, "Unable to list child Jobs")
 			return ctrl.Result{}, err
 		}
-
 		if childJobs.Size() > 0 {
-
 			korgiJob.Status.Status = newKorgiJobStatus(&childJobs.Items[0])
 			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
-				log.Error(err, "Status update failed")
+				log.Error(err, "Status update failed (from running)")
 				return ctrl.Result{}, err
 			}
 		}
 
 	case esupvgrycapv1.KorgiJobRescheduling:
+		log.Info("KorgiJob.Status = RESCHEDULING")
 		// Detele current associated job
+		var childJobs batchv1.JobList
+		if err := r.List(ctx, &childJobs, client.InNamespace(req.Namespace)); err != nil {
+			log.Error(err, "Unable to list child Jobs")
+			return ctrl.Result{}, err
+		}
+		job := &childJobs.Items[0]
+		jobName := job.GetName()
+		if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); client.IgnoreNotFound(err) != nil {
+			log.Error(err, "unable to delete old job", "job", jobName)
+		} else {
+			log.Info("Deleted old job", "job", jobName)
+		}
 		// Change status to Pending
+		korgiJob.Status.Status = esupvgrycapv1.KorgiJobPending
+		if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+			log.Error(err, "Status update failed (from resch. to pending)")
+			return ctrl.Result{}, err
+		}
 	case esupvgrycapv1.KorgiJobCompleted:
 		// --
 		log.Info("KorgiJob.Status = COMPLETED")

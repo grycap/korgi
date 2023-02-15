@@ -90,7 +90,7 @@ func (r *KorgiJobSchedulerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		switch foundKJ.Status.Status {
 		case "":
 			// Change korgijob status to pending
-			log.Info("Change korgijob status to pending...")
+			log.Info("KJ.Status = '', change korgijob status to pending...")
 			foundKJ.Status.Status = esupvgrycapv1.KorgiJobPending
 			if err := r.Client.Status().Update(ctx, foundKJ); err != nil {
 				log.Error(err, "Status update failed")
@@ -104,10 +104,23 @@ func (r *KorgiJobSchedulerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			}
 		case esupvgrycapv1.KorgiJobRunning:
 			// Change KJ.Status to Rescheduling
+			log.Info("KJ.Status = RUNNING, change korgijob status to rescheduling...")
+			foundKJ.Status.Status = esupvgrycapv1.KorgiJobRescheduling
+			if err := r.Client.Status().Update(ctx, foundKJ); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
 			// Change KJS.Status to Completed
+			korgiJobScheduler.Status.Status = esupvgrycapv1.KorgiJobSchedulerCompleted
+			if err := r.Client.Status().Update(ctx, korgiJobScheduler); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
 		case esupvgrycapv1.KorgiJobCompleted:
+			log.Info("KJ.Status = Completed")
 			// Change KJS.Status to Completed
 		case esupvgrycapv1.KorgiJobFailed:
+			log.Info("KJ.Status = Failed")
 			// Change KJ.Status to Rescheduling
 		}
 	}

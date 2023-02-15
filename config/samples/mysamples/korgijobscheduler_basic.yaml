@@ -5,4 +5,4 @@ metadata:
   namespace: test-nm
 spec:
   korgijobname: prueba01
-  gpu: nvidia.com/mig-2g.12gb
+  gpu: nvidia.com/mig-1g.6gb
