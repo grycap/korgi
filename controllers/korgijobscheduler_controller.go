@@ -55,49 +55,53 @@ func (r *KorgiJobSchedulerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		log.Error(err, "Unable to fetch KorgiJobScheduler")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	foundKJ := &esupvgrycapv1.KorgiJob{}
+	// Check if the KorgiJob already exists
+	errFoundKJ := r.Get(ctx, types.NamespacedName{Name: korgiJobScheduler.Spec.KorgiJobName, Namespace: req.Namespace}, foundKJ)
 	// TODO(user): your logic here
 	switch korgiJobScheduler.GetStatus() {
 	case "":
 		log.Info("..... KorgiJobScheduler Controller Starts .....")
 		log.Info("KorgiJob Name = " + korgiJobScheduler.Spec.KorgiJobName)
 		log.Info("KorgiJob GPU Resources = " + korgiJobScheduler.Spec.GPUResources)
-		// Check if the KorgiJob already exists
-		foundKJ := &esupvgrycapv1.KorgiJob{}
-		err := r.Get(context.TODO(), types.NamespacedName{Name: korgiJobScheduler.Spec.KorgiJobName, Namespace: req.Namespace}, foundKJ)
-		if err != nil && errors.IsNotFound(err) {
+
+		if errFoundKJ != nil && errors.IsNotFound(errFoundKJ) {
 			log.Info("KorgiJob " + korgiJobScheduler.Spec.KorgiJobName + " not found.")
 		} else {
 			log.Info("KorgiJob " + korgiJobScheduler.Spec.KorgiJobName + " has been found.")
 			// Pass GPU information to korgijob
 			foundKJ.Status.GPUInfo = korgiJobScheduler.Spec.GPUResources
+			if err := r.Client.Status().Update(ctx, foundKJ); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
+			log.Info("TEST: " + foundKJ.Status.GPUInfo)
 			// Change KJS.Status to Running
 			korgiJobScheduler.Status.Status = esupvgrycapv1.KorgiJobSchedulerRunning
 			if err := r.Client.Status().Update(ctx, korgiJobScheduler); err != nil {
 				log.Error(err, "Status update failed")
 				return ctrl.Result{}, err
 			}
-			log.Info("Change korgijob status to pending...")
-			foundKJ.Status.Status = esupvgrycapv1.KorgiJobPending
-			//TODO: update status
 		}
 
 	case esupvgrycapv1.KorgiJobSchedulerRunning:
 		// Check KJ Status
 		log.Info("..... KorgiJobScheduler Controller -> KJS Running .....")
-		foundKJ := &esupvgrycapv1.KorgiJob{}
-		var kjStatus string
-		err := r.Get(context.TODO(), types.NamespacedName{Name: korgiJobScheduler.Spec.KorgiJobName, Namespace: req.Namespace}, foundKJ)
-		if err != nil && errors.IsNotFound(err) {
-			log.Info("KorgiJob " + korgiJobScheduler.Spec.KorgiJobName + " not found.")
-		} else {
-			log.Info("KorgiJob " + korgiJobScheduler.Spec.KorgiJobName + " has been found.")
-			kjStatus = korgiJobScheduler.Status.Status
-		}
-		switch kjStatus {
+		switch foundKJ.Status.Status {
 		case "":
 			// Change korgijob status to pending
-		case esupvgrycapv1.KorgiJobPending:
-			log.Info("Enters KJ Pending")
+			log.Info("Change korgijob status to pending...")
+			foundKJ.Status.Status = esupvgrycapv1.KorgiJobPending
+			if err := r.Client.Status().Update(ctx, foundKJ); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
+			// Change KJS.Status to Completed
+			korgiJobScheduler.Status.Status = esupvgrycapv1.KorgiJobSchedulerCompleted
+			if err := r.Client.Status().Update(ctx, korgiJobScheduler); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
 		case esupvgrycapv1.KorgiJobRunning:
 			// Change KJ.Status to Rescheduling
 			// Change KJS.Status to Completed

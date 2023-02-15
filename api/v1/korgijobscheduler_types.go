@@ -54,6 +54,7 @@ type KorgiJobSchedulerStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:JSONPath=".status.status",name="Status",type="string"
 
 // KorgiJobScheduler is the Schema for the korgijobschedulers API
 type KorgiJobScheduler struct {

@@ -51,8 +51,7 @@ type KorgiJobStatus struct {
 
 	//Status describes the status of the KorgiJob:
 	//PENDING, RUNNING, RESCHEDULING, COMPLETED, FAILED
-	Status string `json:"status"`
-
+	Status  string `json:"status"`
 	GPUInfo string `json:"gpuinfo"`
 }
 

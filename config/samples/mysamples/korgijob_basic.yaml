@@ -4,4 +4,5 @@ metadata:
   name: prueba01
   namespace: test-nm
 spec:
-  # TODO(user): Add fields here
+  image: esparig/testing-tf-models:latest
+  command: ["/bin/bash","-c","cd /usr/local/lib/python3.6/dist-packages/official && python3 vision/image_classification/mnist_main.py --model_dir=$MODEL_DIR --data_dir=$DATA_DIR --train_epochs=20 --download"]

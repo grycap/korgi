@@ -20,6 +20,9 @@ import (
 	"context"
 
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,14 +51,31 @@ type KorgiJobReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
 func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	// TODO(user): your logic here
-	// _ := log.FromContext(ctx)
 
 	log := log.FromContext(ctx)
 	korgiJob := &esupvgrycapv1.KorgiJob{}
 	if err := r.Client.Get(ctx, req.NamespacedName, korgiJob); err != nil {
 		log.Error(err, "Unable to fetch KorgiJob")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// Helper to update KorgiJob Status depending on the Job Status
+	newKorgiJobStatus := func(job *batchv1.Job) string {
+		active := job.Status.Active
+		succeeded := job.Status.Succeeded
+		failed := job.Status.Failed
+		log.Info("", "Active: ", active, "Succeeded: ", succeeded, "Failed: ", failed)
+		if active > 0 {
+			return esupvgrycapv1.KorgiJobRunning
+		}
+		if job.Status.Succeeded > 0 {
+			return esupvgrycapv1.KorgiJobCompleted
+		}
+		if job.Status.Failed > 0 {
+			return esupvgrycapv1.KorgiJobFailed
+		}
+		// default option:
+		return "UNDETERMINED"
 	}
 
 	switch korgiJob.GetStatus() {
@@ -66,21 +86,85 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// else 		-> wait for a KorgiJobScheduler
 	case esupvgrycapv1.KorgiJobPending:
 		// Create associated job
-		// Change status to Running
+		log.Info("KorgiJob.Status = PENDING")
+		log.Info("Creating job from KorgiJob")
+		job := batchv1.Job{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      korgiJob.Name + "-subjob",
+				Namespace: korgiJob.Namespace,
+				Labels:    korgiJob.Labels,
+			},
+
+			Spec: batchv1.JobSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							corev1.Container{
+								Name:    korgiJob.Name + "-container",
+								Image:   korgiJob.Spec.Image,
+								Command: korgiJob.Spec.Command,
+								Resources: corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceName(korgiJob.Status.GPUInfo): resource.MustParse("1"),
+									},
+								},
+							},
+						},
+						RestartPolicy: "Never",
+					},
+				},
+			},
+		}
+
+		if _, err := ctrl.CreateOrUpdate(ctx, r.Client, &job, func() error {
+			if err := ctrl.SetControllerReference(korgiJob, &job, r.Scheme); err != nil {
+				return err
+			}
+			log.Info("Job created", "job", job.Name)
+			return nil
+		}); err != nil {
+			return ctrl.Result{}, err
+		}
+		// Update KorgiJob status
+		korgiJob.Status.Status = esupvgrycapv1.KorgiJobRunning
+		if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+			log.Error(err, "Status update failed")
+			return ctrl.Result{}, err
+		}
+
 	case esupvgrycapv1.KorgiJobRunning:
 		// Check Job Status
 		// if Active 	-> wait
 		// if Succeded 	-> change status to Completed
 		// if Failed  	-> change status to Failed
+		log.Info("KorgiJob.Status = RUNNING")
+		var childJobs batchv1.JobList
+		if err := r.List(ctx, &childJobs, client.InNamespace(req.Namespace)); err != nil {
+			log.Error(err, "Unable to list child Jobs")
+			return ctrl.Result{}, err
+		}
+
+		if childJobs.Size() > 0 {
+
+			korgiJob.Status.Status = newKorgiJobStatus(&childJobs.Items[0])
+			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+				log.Error(err, "Status update failed")
+				return ctrl.Result{}, err
+			}
+		}
+
 	case esupvgrycapv1.KorgiJobRescheduling:
 		// Detele current associated job
 		// Change status to Pending
 	case esupvgrycapv1.KorgiJobCompleted:
 		// --
+		log.Info("KorgiJob.Status = COMPLETED")
 	case esupvgrycapv1.KorgiJobFailed:
 		// --
+		log.Info("KorgiJob.Status = FAILED")
 	}
 	return ctrl.Result{}, nil
+
 }
 
 // SetupWithManager sets up the controller with the Manager.
