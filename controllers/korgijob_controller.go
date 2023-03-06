@@ -84,7 +84,7 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		foundKorgiJobScheduler := &esupvgrycapv1.KorgiJobScheduler{}
 		err := r.Get(ctx, types.NamespacedName{Name: korgiJobSchedulerName, Namespace: korgiJob.Namespace}, foundKorgiJobScheduler)
 		if err != nil {
-			// If a configMap name is provided, then it must exist
+			// If a korgiJobScheduler name is provided, then it must exist
 			// You will likely want to create an Event for the user to understand why their reconcile is failing.
 			return ctrl.Result{}, err
 		}
