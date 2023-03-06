@@ -40,8 +40,9 @@ type KorgiJobSpec struct {
 	// Foo is an example field of KorgiJob. Edit korgijob_types.go to remove/update
 	// Foo string `json:"foo,omitempty"`
 
-	Image   string   `json:"image"`
-	Command []string `json:"command"`
+	Image             string   `json:"image"`
+	Command           []string `json:"command"`
+	KorgiJobScheduler string   `json:"korgijobscheduler"`
 }
 
 // KorgiJobStatus defines the observed state of KorgiJob
@@ -51,8 +52,7 @@ type KorgiJobStatus struct {
 
 	//Status describes the status of the KorgiJob:
 	//PENDING, RUNNING, RESCHEDULING, COMPLETED, FAILED
-	Status  string `json:"status"`
-	GPUInfo string `json:"gpuinfo"`
+	Status string `json:"status"`
 }
 
 //+kubebuilder:object:root=true
