@@ -44,6 +44,10 @@ const (
 	korgiJobSchedulerField = ".spec.KorgiJobScheduler"
 )
 
+var korgiJobSchedulerHasChanged bool = false
+var korgiJobSchedulerVersion string = ""
+var korgiJobSchedulerGPU string = ""
+
 // KorgiJobReconciler reconciles a KorgiJob object
 type KorgiJobReconciler struct {
 	client.Client
@@ -76,40 +80,54 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	log.Info("KorgiJob: " + korgiJob.GetName())
 
-	var korgiJobSchedulerVersion string
-	var korgiJobSchedulerGPU string
-	if korgiJob.Spec.KorgiJobScheduler != "" {
-		korgiJobSchedulerName := korgiJob.Spec.KorgiJobScheduler
-		log.Info("korgiJobSchedulerName: " + korgiJobSchedulerName)
-		foundKorgiJobScheduler := &esupvgrycapv1.KorgiJobScheduler{}
-		err := r.Get(ctx, types.NamespacedName{Name: korgiJobSchedulerName, Namespace: korgiJob.Namespace}, foundKorgiJobScheduler)
-		if err != nil {
-			// If a korgiJobScheduler name is provided, then it must exist
-			// You will likely want to create an Event for the user to understand why their reconcile is failing.
-			return ctrl.Result{}, err
+	start := time.Now()
+
+	korgiJobSchedulerName := korgiJob.Spec.KorgiJobScheduler
+	foundKorgiJobScheduler := &esupvgrycapv1.KorgiJobScheduler{}
+	err := r.Get(ctx, types.NamespacedName{Name: korgiJobSchedulerName, Namespace: korgiJob.Namespace}, foundKorgiJobScheduler)
+	for err != nil {
+		if time.Since(start) >= 2*time.Minute { //hardcoded TimeOut duration
+			log.Info("KorgiJob TIMEOUT")
+			// Update KorgiJob status
+			korgiJob.Status.Status = esupvgrycapv1.KorgiJobFailed
+			if err2 := r.Client.Status().Update(ctx, korgiJob); err2 != nil {
+				log.Error(err, "KorgiJobScheduler couldn't be retrieved")
+				log.Error(err2, "Status update failed (to failed due to timeout )")
+				return ctrl.Result{}, err2
+			}
+			break
 		}
+		err = r.Get(ctx, types.NamespacedName{Name: korgiJobSchedulerName, Namespace: korgiJob.Namespace}, foundKorgiJobScheduler)
 
 		// Hash the data in some way, or just use the version of the Object
-		korgiJobSchedulerVersion = foundKorgiJobScheduler.ResourceVersion
-		korgiJobSchedulerGPU = foundKorgiJobScheduler.Spec.GPUResources
-
-		// Update KorgiJob status
-		korgiJob.Status.Status = esupvgrycapv1.KorgiJobPending
-		if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
-			log.Error(err, "Status update failed (to pending ) 010")
-			return ctrl.Result{}, err
+		if korgiJobSchedulerVersion != foundKorgiJobScheduler.ResourceVersion && foundKorgiJobScheduler.Spec.KorgiJobName == korgiJob.GetName() {
+			log.Info("New KorgiJobScheduler!!")
+			korgiJobSchedulerVersion = foundKorgiJobScheduler.ResourceVersion
+			korgiJobSchedulerGPU = foundKorgiJobScheduler.Spec.GPUResources
+			korgiJobSchedulerHasChanged = true
+			break
 		}
 	}
 
 	switch korgiJob.GetStatus() {
 	case "":
 
+		if korgiJobSchedulerHasChanged {
+
+			// Update KorgiJob status
+			korgiJob.Status.Status = esupvgrycapv1.KorgiJobPending
+			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+				log.Error(err, "Status update failed (to pending ) 010")
+				return ctrl.Result{}, err
+			}
+		}
 		// Check creation time
 		// if > x hours	-> change status to Failed
 		// else 		-> wait for a KorgiJobScheduler
 	case esupvgrycapv1.KorgiJobPending:
 		// Create associated job
 		log.Info("KorgiJob.Status = PENDING")
+		korgiJobSchedulerHasChanged = false
 		log.Info("Creating job from KorgiJob")
 		jobName := fmt.Sprintf("%s-%d", korgiJob.Name+"-subjob", time.Now().Unix())
 		annotations := make(map[string]string)
@@ -144,22 +162,31 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 		if _, err := ctrl.CreateOrUpdate(ctx, r.Client, &job, func() error {
 			log.Info("Job created", "job", job.Name)
-			return ctrl.SetControllerReference(korgiJob, &job, r.Scheme)
+			ctrl.SetControllerReference(korgiJob, &job, r.Scheme)
+			// Update KorgiJob status
+			korgiJob.Status.Status = esupvgrycapv1.KorgiJobRunning
+			if err2 := r.Client.Status().Update(ctx, korgiJob); err2 != nil {
+				log.Error(err2, "Status update failed (from pending to running) 011")
+				return err2
+			}
+			return nil
 		}); err != nil {
 			return ctrl.Result{}, err
 		}
-		// Update KorgiJob status
-		korgiJob.Status.Status = esupvgrycapv1.KorgiJobRunning
-		if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
-			log.Error(err, "Status update failed (from pending to running) 011")
-			return ctrl.Result{}, err
-		}
+
 	case esupvgrycapv1.KorgiJobRunning:
 		// Check Job Status
 		// if Active 	-> wait
 		// if Succeded 	-> change status to Completed
 		// if Failed  	-> change status to Failed
 		log.Info("KorgiJob.Status = RUNNING")
+		if korgiJobSchedulerHasChanged {
+			korgiJob.Status.Status = esupvgrycapv1.KorgiJobRescheduling
+			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+				log.Error(err, "Status update failed 012b")
+				return ctrl.Result{}, err
+			}
+		}
 		var childJobs batchv1.JobList
 		if err := r.List(ctx, &childJobs, client.InNamespace(req.Namespace)); err != nil {
 			log.Error(err, "Unable to list child Jobs")
