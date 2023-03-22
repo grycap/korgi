@@ -90,8 +90,9 @@ func main() {
 	}
 
 	if err = (&controllers.KorgiJobReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		PrevState: make(map[string]esupvgrycapv1.KorgiJob),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KorgiJob")
 		os.Exit(1)

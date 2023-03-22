@@ -19,8 +19,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -51,8 +53,19 @@ var korgiJobSchedulerGPU string = ""
 // KorgiJobReconciler reconciles a KorgiJob object
 type KorgiJobReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme    *runtime.Scheme
+	PrevState map[string]esupvgrycapv1.KorgiJob
 }
+
+/* NewKorgiJobReconciler creates a new KorgiJobReconciler
+func NewKorgiJobReconciler(client client.Client, scheme *runtime.Scheme) *KorgiJobReconciler {
+	return &KorgiJobReconciler{
+		Client:    client,
+		Scheme:    scheme,
+		PrevState: make(map[string]esupvgrycapv1.KorgiJob),
+	}
+}
+*/
 
 //+kubebuilder:rbac:groups=es.upv.grycap,resources=korgijobs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=es.upv.grycap,resources=korgijobs/status,verbs=get;update;patch
@@ -72,13 +85,32 @@ type KorgiJobReconciler struct {
 func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
 	log := log.FromContext(ctx)
+	log.Info("Reconciling KorgiJob: ", "namespace", req.Namespace, "name ", req.Name)
 
-	korgiJob := &esupvgrycapv1.KorgiJob{}
+	// Get the current state of the object from the API server
+	var korgiJob = &esupvgrycapv1.KorgiJob{}
 	if err := r.Client.Get(ctx, req.NamespacedName, korgiJob); err != nil {
 		log.Error(err, "Unable to fetch KorgiJob")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
 	log.Info("KorgiJob: " + korgiJob.GetName())
+
+	// Check if we have a previous state for this object
+	if _, ok := r.PrevState[req.NamespacedName.String()]; !ok {
+		// If not, create a new entry in the map
+		r.PrevState[req.NamespacedName.String()] = *korgiJob.DeepCopy()
+	}
+	// If ok, we have a previous state, so we can compare it with the current one
+	prevState := r.PrevState[req.NamespacedName.String()]
+	// Compare the previous and current states to determine what changed using reflect.DeepEqual
+	if !reflect.DeepEqual(prevState, *korgiJob) {
+		// print the diff
+		log.Info("KorgiJob changed")
+		log.Info("Diff: ", "diff", cmp.Diff(prevState, *korgiJob))
+	}
+	//Update previous state
+	r.PrevState[req.NamespacedName.String()] = *korgiJob.DeepCopy()
 
 	start := time.Now()
 
@@ -98,21 +130,23 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			break
 		}
 		err = r.Get(ctx, types.NamespacedName{Name: korgiJobSchedulerName, Namespace: korgiJob.Namespace}, foundKorgiJobScheduler)
-
-		// Hash the data in some way, or just use the version of the Object
-		if korgiJobSchedulerVersion != foundKorgiJobScheduler.ResourceVersion && foundKorgiJobScheduler.Spec.KorgiJobName == korgiJob.GetName() {
-			log.Info("New KorgiJobScheduler!!")
-			korgiJobSchedulerVersion = foundKorgiJobScheduler.ResourceVersion
-			korgiJobSchedulerGPU = foundKorgiJobScheduler.Spec.GPUResources
-			korgiJobSchedulerHasChanged = true
-			break
-		}
+	}
+	// Hash the data in some way, or just use the version of the Object
+	log.Info(korgiJobSchedulerVersion + " " + foundKorgiJobScheduler.ResourceVersion)
+	log.Info("korgiJob name for KJS " + foundKorgiJobScheduler.Spec.KorgiJobName)
+	log.Info(korgiJob.GetName())
+	if korgiJobSchedulerVersion != foundKorgiJobScheduler.ResourceVersion && foundKorgiJobScheduler.Spec.KorgiJobName == korgiJob.GetName() {
+		log.Info("New KorgiJobScheduler!!")
+		korgiJobSchedulerVersion = foundKorgiJobScheduler.ResourceVersion
+		korgiJobSchedulerGPU = foundKorgiJobScheduler.Spec.GPUResources
+		korgiJobSchedulerHasChanged = true
 	}
 
 	switch korgiJob.GetStatus() {
 	case "":
 
 		if korgiJobSchedulerHasChanged {
+			log.Info("KorgiJob.Status = EMPTY")
 
 			// Update KorgiJob status
 			korgiJob.Status.Status = esupvgrycapv1.KorgiJobPending
@@ -186,47 +220,45 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				log.Error(err, "Status update failed 012b")
 				return ctrl.Result{}, err
 			}
-		}
-		var childJobs batchv1.JobList
-		if err := r.List(ctx, &childJobs, client.InNamespace(req.Namespace)); err != nil {
-			log.Error(err, "Unable to list child Jobs")
-			return ctrl.Result{}, err
-		}
-		if childJobs.Size() > 0 {
-			active := childJobs.Items[0].Status.Active
-			succeeded := childJobs.Items[0].Status.Succeeded
-			failed := childJobs.Items[0].Status.Failed
-			log.Info("", "Active: ", active, "Succeeded: ", succeeded, "Failed: ", failed)
-			if !(active == 0 && failed == 0 && succeeded == 0) {
-				if failed > 0 {
-					korgiJob.Status.Status = esupvgrycapv1.KorgiJobFailed
-				}
-				if succeeded > 0 {
-					korgiJob.Status.Status = esupvgrycapv1.KorgiJobCompleted
-				}
-				if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
-					log.Error(err, "Status update failed 012")
-					return ctrl.Result{}, err
+		} else {
+			var childJobs batchv1.JobList
+			if err := r.List(ctx, &childJobs, client.InNamespace(req.Namespace)); err != nil {
+				log.Error(err, "Unable to list child Jobs")
+				return ctrl.Result{}, err
+			}
+			if childJobs.Size() > 0 {
+				active := childJobs.Items[0].Status.Active
+				succeeded := childJobs.Items[0].Status.Succeeded
+				failed := childJobs.Items[0].Status.Failed
+				log.Info("", "Active: ", active, "Succeeded: ", succeeded, "Failed: ", failed)
+				if !(active == 0 && failed == 0 && succeeded == 0) {
+					if failed > 0 {
+						korgiJob.Status.Status = esupvgrycapv1.KorgiJobFailed
+					}
+					if succeeded > 0 {
+						korgiJob.Status.Status = esupvgrycapv1.KorgiJobCompleted
+					}
+					if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+						log.Error(err, "Status update failed 012")
+						return ctrl.Result{}, err
+					}
 				}
 			}
 		}
 	case esupvgrycapv1.KorgiJobRescheduling:
 		log.Info("KorgiJob.Status = RESCHEDULING")
-		// Detele current associated job (if exists)
+		// Delete any child jobs
 		var childJobs batchv1.JobList
 		if err := r.List(ctx, &childJobs, client.InNamespace(req.Namespace)); err != nil {
 			log.Error(err, "Unable to list child Jobs")
 			return ctrl.Result{}, err
 		}
-		if childJobs.Size() > 0 {
-			job := &childJobs.Items[0]
-			jobName := job.GetName()
-			if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); client.IgnoreNotFound(err) != nil {
-				log.Error(err, "unable to delete old job", "job", jobName)
+		for _, job := range childJobs.Items {
+			if err := r.Delete(ctx, &job); err != nil {
+				log.Error(err, "Unable to delete child Job")
 				return ctrl.Result{}, err
-			} else {
-				log.Info("Deleted old job", "job", jobName)
 			}
+			log.Info("ChildJob deleted", "job", job.GetName())
 		}
 		// Change status to Pending
 		korgiJob.Status.Status = esupvgrycapv1.KorgiJobPending
@@ -238,8 +270,15 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// --
 		log.Info("KorgiJob.Status = COMPLETED")
 	case esupvgrycapv1.KorgiJobFailed:
-		// --
 		log.Info("KorgiJob.Status = FAILED")
+		if korgiJobSchedulerHasChanged {
+			// Update KorgiJob status
+			korgiJob.Status.Status = esupvgrycapv1.KorgiJobPending
+			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
+				log.Error(err, "Status update failed (to pending ) 010")
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
 	return ctrl.Result{}, nil
