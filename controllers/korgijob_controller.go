@@ -118,7 +118,7 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	foundKorgiJobScheduler := &esupvgrycapv1.KorgiJobScheduler{}
 	err := r.Get(ctx, types.NamespacedName{Name: korgiJobSchedulerName, Namespace: korgiJob.Namespace}, foundKorgiJobScheduler)
 	for err != nil {
-		if time.Since(start) >= 2*time.Minute { //hardcoded TimeOut duration
+		if time.Since(start) >= 2*time.Minute { //TO DO: make it configurable (hardcoded TimeOut duration)
 			log.Info("KorgiJob TIMEOUT")
 			// Update KorgiJob status
 			korgiJob.Status.Status = esupvgrycapv1.KorgiJobFailed
@@ -147,7 +147,7 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 		if korgiJobSchedulerHasChanged {
 			log.Info("KorgiJob.Status = EMPTY")
-
+			korgiJobSchedulerHasChanged = false
 			// Update KorgiJob status
 			korgiJob.Status.Status = esupvgrycapv1.KorgiJobPending
 			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
@@ -161,11 +161,11 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	case esupvgrycapv1.KorgiJobPending:
 		// Create associated job
 		log.Info("KorgiJob.Status = PENDING")
-		korgiJobSchedulerHasChanged = false
 		log.Info("Creating job from KorgiJob")
 		jobName := fmt.Sprintf("%s-%d", korgiJob.Name+"-subjob", time.Now().Unix())
 		annotations := make(map[string]string)
 		annotations["KorgiJobSchedulerVersion"] = korgiJobSchedulerVersion
+		ttlSecondsAfterFinished := int32(3600) //TO DO: make it configurable
 		job := batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        jobName,
@@ -175,6 +175,7 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			},
 
 			Spec: batchv1.JobSpec{
+				TTLSecondsAfterFinished: &ttlSecondsAfterFinished,
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
@@ -215,6 +216,7 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// if Failed  	-> change status to Failed
 		log.Info("KorgiJob.Status = RUNNING")
 		if korgiJobSchedulerHasChanged {
+			korgiJobSchedulerHasChanged = false
 			korgiJob.Status.Status = esupvgrycapv1.KorgiJobRescheduling
 			if err := r.Client.Status().Update(ctx, korgiJob); err != nil {
 				log.Error(err, "Status update failed 012b")
@@ -269,6 +271,7 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	case esupvgrycapv1.KorgiJobCompleted:
 		// --
 		log.Info("KorgiJob.Status = COMPLETED")
+
 	case esupvgrycapv1.KorgiJobFailed:
 		log.Info("KorgiJob.Status = FAILED")
 		if korgiJobSchedulerHasChanged {
