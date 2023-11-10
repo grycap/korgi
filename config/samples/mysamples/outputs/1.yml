@@ -1,0 +1,18 @@
+INFO    Diff:   {"controller": "korgijob", "controllerGroup": "es.upv.grycap", 
+"controllerKind": "KorgiJob", "KorgiJob": {"name":"prueba01","namespace":"test-nm"}, 
+"namespace": "test-nm", "name": "prueba01", 
+"reconcileID": "38c86f22-bc20-435c-b4e2-abc6bb7d9fae", 
+"diff": "  v1.KorgiJob{\n  \tTypeMeta: {Kind: \"KorgiJob\", 
+APIVersion: \"es.upv.grycap/v1\"},\n  \t
+ObjectMeta: v1.ObjectMeta{\n  \t\t... // 3 identical fields\n  \$\t
+SelfLink:          \"/apis/es.upv.grycap/v1/namespaces/test-nm/korgijobs/prueba01\",\n  \t\t
+UID:               \"6df07357-0967-43ee-b348-dcd63413c171\",\n- \t\t
+ResourceVersion:   \"24427135\",\n+ \t\t
+ResourceVersion:   \"24$27167\",\n  \t\t
+Generation:        1,\n  \t\t
+CreationTimestamp: {Time: s\"2023-03-22 11:02:54 +0100 CET\"},\n  \t\t... 
+// 4 identical fields\n  \t\t
+OwnerReferences: nil,\n  \t\tFinalizers:      nil,\n  \t\t
+ManagedFields: []v1$ManagedFieldsEntry{\n  \t\t\t{
+Manager: \"kubectl-client-side-apply\", 
+Operation: \"Update\", APIVersion: \"es.upv.grycap/v1\", Time: s\"2023-03-22 11:02:54 +0100 CET\", ...},\n+ \t\t\t{\n+ \t\t\t\tManager:     \"main\",\n+ \t$t\t\tOperation:   \"Update\",\n+ \t\t\t\tAPIVersion:  \"es.upv.grycap/v1\",\n+ \t\t\t\tTime:        s\"2023-03-22 11:03:05 +0100 CET\",\n+ \t\t\t\tFieldsType:  \"FieldsV1\",\n+ \t\t\t\tFieldsV1:    s`{\"f:status\":{\".\":{},\$f:status\":{}}}`,\n+ \t\t\t\tSubresource: \"status\",\n+ \t\t\t},\n  \t\t},\n  \t},\n  \tSpec:   {Image: \"esparig/testing-tf-models:latest\", Command: {\"/bin/bash\", \"-c\", \"cd /usr/local/lib/python3.6/dist-packages/offic$al && python3 vi\"...}, KorgiJobScheduler: \"korgijobscheduler-sample\"},\n- \tStatus: v1.KorgiJobStatus{},\n+ \tStatus: v1.KorgiJobStatus{Status: \"RUNNING\"},\n  }\n"}
