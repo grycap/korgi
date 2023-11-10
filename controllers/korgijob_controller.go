@@ -178,6 +178,24 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				TTLSecondsAfterFinished: &ttlSecondsAfterFinished,
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
+						Volumes: []corev1.Volume{ //TO DO: make it configurable
+							corev1.Volume{
+								Name: "dataset-volume",
+								VolumeSource: corev1.VolumeSource{
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/hdd500/data",
+									},
+								},
+							},
+							corev1.Volume{
+								Name: "tensorboard-volume",
+								VolumeSource: corev1.VolumeSource{
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/hdd500/tensorboard",
+									},
+								},
+							},
+						},
 						Containers: []corev1.Container{
 							corev1.Container{
 								Name:    korgiJob.Name + "-container",
@@ -186,6 +204,16 @@ func (r *KorgiJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 								Resources: corev1.ResourceRequirements{
 									Limits: corev1.ResourceList{
 										corev1.ResourceName(korgiJobSchedulerGPU): resource.MustParse("1"),
+									},
+								},
+								VolumeMounts: []corev1.VolumeMount{
+									corev1.VolumeMount{
+										Name:      "dataset-volume",
+										MountPath: "/data",
+									},
+									corev1.VolumeMount{
+										Name:      "tensorboard-volume",
+										MountPath: "/tensorboard",
 									},
 								},
 							},

@@ -4,5 +4,5 @@ metadata:
   name: korgijobscheduler-sample
   namespace: test-nm
 spec:
-  korgijobname: prueba01
+  korgijobname: tf-cancernet-tensorboard-test
   gpu: nvidia.com/mig-1g.6gb
