@@ -1,8 +1,0 @@
-# Simple command sample
-apiVersion: korgi.korgi.grycap.upv.es/v1
-kind: KorgiJob
-metadata:
-  name: korgijob-sample-1
-spec:
-  image: ubuntu:latest
-  command: ["/bin/bash","-c", "--", "while true; do sleep 30; done;"]

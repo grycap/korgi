@@ -1,7 +1,0 @@
-apiVersion: cnat.esparig.github.io/v1alpha1
-kind: At
-metadata:
-  name: at-sample-two
-spec:
-  schedule: "2022-03-31T14:29:00Z"
-  command: 'echo "Happiness is when what you think, what you say, and what you do are in harmony."'

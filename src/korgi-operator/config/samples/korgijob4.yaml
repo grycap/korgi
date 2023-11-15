@@ -1,8 +1,0 @@
-# Test what happends if invalid command provided
-apiVersion: korgi.korgi.grycap.upv.es/v1
-kind: KorgiJob
-metadata:
-  name: korgijob-sample-4
-spec:
-  image: esparig/testing-tf-models:latest
-  command: ["/bin/bash","-c","invalid-command.py"]

@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- es.upv.grycap_v1_korgijob.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

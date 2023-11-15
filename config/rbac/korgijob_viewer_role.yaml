@@ -1,0 +1,27 @@
+# permissions for end users to view korgijobs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: korgijob-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: korgi
+    app.kubernetes.io/part-of: korgi
+    app.kubernetes.io/managed-by: kustomize
+  name: korgijob-viewer-role
+rules:
+- apiGroups:
+  - es.upv.grycap.es.upv.grycap
+  resources:
+  - korgijobs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - es.upv.grycap.es.upv.grycap
+  resources:
+  - korgijobs/status
+  verbs:
+  - get
