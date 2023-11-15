@@ -12,7 +12,7 @@ metadata:
   name: korgijob-editor-role
 rules:
 - apiGroups:
-  - es.upv.grycap
+  - es.upv.grycap.es.upv.grycap
   resources:
   - korgijobs
   verbs:
@@ -24,7 +24,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - es.upv.grycap
+  - es.upv.grycap.es.upv.grycap
   resources:
   - korgijobs/status
   verbs:

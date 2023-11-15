@@ -1,8 +1,0 @@
-apiVersion: es.upv.grycap/v1
-kind: KorgiJobScheduler
-metadata:
-  name: korgijobscheduler-sample2
-  namespace: test-nm
-spec:
-  korgijobname: prueba02
-  gpu: nvidia.com/mig-2g.12gb

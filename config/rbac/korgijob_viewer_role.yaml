@@ -12,7 +12,7 @@ metadata:
   name: korgijob-viewer-role
 rules:
 - apiGroups:
-  - es.upv.grycap
+  - es.upv.grycap.es.upv.grycap
   resources:
   - korgijobs
   verbs:
@@ -20,7 +20,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - es.upv.grycap
+  - es.upv.grycap.es.upv.grycap
   resources:
   - korgijobs/status
   verbs:

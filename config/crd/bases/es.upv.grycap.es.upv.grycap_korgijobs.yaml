@@ -3,16 +3,15 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
-  creationTimestamp: null
-  name: korgijobschedulers.es.upv.grycap
+    controller-gen.kubebuilder.io/version: v0.13.0
+  name: korgijobs.es.upv.grycap.es.upv.grycap
 spec:
-  group: es.upv.grycap
+  group: es.upv.grycap.es.upv.grycap
   names:
-    kind: KorgiJobScheduler
-    listKind: KorgiJobSchedulerList
-    plural: korgijobschedulers
-    singular: korgijobscheduler
+    kind: KorgiJob
+    listKind: KorgiJobList
+    plural: korgijobs
+    singular: korgijob
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -22,7 +21,7 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: KorgiJobScheduler is the Schema for the korgijobschedulers API
+        description: KorgiJob is the Schema for the korgijobs API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -37,22 +36,24 @@ spec:
           metadata:
             type: object
           spec:
-            description: KorgiJobSchedulerSpec defines the desired state of KorgiJobScheduler
+            description: KorgiJobSpec defines the desired state of KorgiJob
             properties:
-              gpu:
-                type: string
-              korgijobname:
+              command:
+                items:
+                  type: string
+                type: array
+              image:
                 type: string
             required:
-            - gpu
-            - korgijobname
+            - command
+            - image
             type: object
           status:
-            description: KorgiJobSchedulerStatus defines the observed state of KorgiJobScheduler
+            description: KorgiJobStatus defines the observed state of KorgiJob
             properties:
               status:
-                description: 'Status describes the status of the KorgiJob: RUNNING,
-                  COMPLETED, FAILED'
+                description: 'Status describes the status of the KorgiJob: PENDING,
+                  RUNNING, RESCHEDULING, COMPLETED, FAILED'
                 type: string
             required:
             - status

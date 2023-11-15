@@ -20,7 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 const (
@@ -37,12 +36,8 @@ type KorgiJobSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of KorgiJob. Edit korgijob_types.go to remove/update
-	// Foo string `json:"foo,omitempty"`
-
-	Image             string   `json:"image"`
-	Command           []string `json:"command"`
-	KorgiJobScheduler string   `json:"korgijobscheduler"`
+	Image   string   `json:"image"`
+	Command []string `json:"command"`
 }
 
 // KorgiJobStatus defines the observed state of KorgiJob

@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package v1 contains API Schema definitions for the  v1 API group
+// Package v1 contains API Schema definitions for the es.upv.grycap v1 API group
 // +kubebuilder:object:generate=true
-// +groupName=es.upv.grycap
+// +groupName=es.upv.grycap.es.upv.grycap
 package v1
 
 import (
@@ -26,7 +26,7 @@ import (
 
 var (
 	// GroupVersion is group version used to register these objects
-	GroupVersion = schema.GroupVersion{Group: "es.upv.grycap", Version: "v1"}
+	GroupVersion = schema.GroupVersion{Group: "es.upv.grycap.es.upv.grycap", Version: "v1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}

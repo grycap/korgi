@@ -30,9 +30,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	esupvgrycapv1 "es.upv.grycap/korgi/api/v1"
-	"es.upv.grycap/korgi/controllers"
+	"es.upv.grycap/korgi/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -67,8 +68,7 @@ func main() {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "41673de3.es.upv.grycap",
@@ -89,19 +89,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.KorgiJobReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		PrevState: make(map[string]esupvgrycapv1.KorgiJob),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "KorgiJob")
-		os.Exit(1)
-	}
-	if err = (&controllers.KorgiJobSchedulerReconciler{
+	if err = (&controller.KorgiJobReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "KorgiJobScheduler")
+		setupLog.Error(err, "unable to create controller", "controller", "KorgiJob")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

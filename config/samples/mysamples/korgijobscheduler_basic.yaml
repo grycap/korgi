@@ -1,8 +1,0 @@
-apiVersion: es.upv.grycap/v1
-kind: KorgiJobScheduler
-metadata:
-  name: korgijobscheduler-sample
-  namespace: test-nm
-spec:
-  korgijobname: tf-cancernet-tensorboard-test
-  gpu: nvidia.com/mig-1g.6gb

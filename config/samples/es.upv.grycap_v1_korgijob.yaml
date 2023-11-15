@@ -1,4 +1,4 @@
-apiVersion: es.upv.grycap/v1
+apiVersion: es.upv.grycap.es.upv.grycap/v1
 kind: KorgiJob
 metadata:
   labels:
